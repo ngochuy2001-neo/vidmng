@@ -37,18 +37,6 @@ class CategorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Slug chỉ được chứa chữ cái, số, dấu gạch ngang và gạch dưới")
         return value.lower()
 
-    
-    def validate_name(self, value):
-        """Validate tên category"""
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError("Tên danh mục phải có ít nhất 2 ký tự")
-        return value.strip()
-    
-    def validate_slug(self, value):
-        """Validate slug"""
-        if not value.replace('-', '').replace('_', '').isalnum():
-            raise serializers.ValidationError("Slug chỉ được chứa chữ cái, số, dấu gạch ngang và gạch dưới")
-        return value.lower()
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -126,6 +114,9 @@ class VideoCreateUpdateSerializer(serializers.ModelSerializer):
             'title', 'slug', 'description', 'video_file', 'thumbnail', 
             'category', 'tag_ids', 'status', 'is_favorite'
         ]
+        extra_kwargs = {
+            'thumbnail': {'required': False, 'allow_null': True}
+        }
     
     def validate_title(self, value):
         """Validate tiêu đề"""
