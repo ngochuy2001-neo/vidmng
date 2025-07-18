@@ -8,7 +8,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="Tên danh mục")
     slug = models.SlugField(max_length=100, unique=True, verbose_name="Slug")
     description = models.TextField(blank=True, verbose_name="Mô tả")
-    image = models.ImageField(upload_to='categories/%Y/%m/', blank=True, verbose_name="Hình ảnh minh họa")
+    image = models.ImageField(upload_to='categories', blank=True, verbose_name="Hình ảnh minh họa")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     
     class Meta:
