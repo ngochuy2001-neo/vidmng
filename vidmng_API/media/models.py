@@ -53,8 +53,8 @@ class Video(models.Model):
     description = models.TextField(blank=True, verbose_name="Mô tả")
     
     # File video
-    video_file = models.FileField(upload_to='videos/%Y/%m/', verbose_name="File video")
-    thumbnail = models.ImageField(upload_to='thumbnails/%Y/%m/', blank=True, verbose_name="Ảnh thumbnail")
+    video_file = models.FileField(upload_to='videos', verbose_name="File video")
+    thumbnail = models.ImageField(upload_to='thumbnails', blank=True, verbose_name="Ảnh thumbnail")
     
     # Phân loại
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Danh mục")
