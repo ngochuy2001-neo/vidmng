@@ -1,11 +1,6 @@
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
-from moviepy.editor import VideoFileClip
-from django.core.files.base import ContentFile
-from io import BytesIO
-from PIL import Image
-import os
 
 
 class Category(models.Model):
@@ -97,27 +92,4 @@ class Video(models.Model):
         if self.status == 'published' and not self.published_at:
             self.published_at = timezone.now()
         
-        # Gọi save lần đầu để đảm bảo file đã được lưu vào hệ thống
         super().save(*args, **kwargs)
-
-        # Nếu chưa có thumbnail và đã có video file, tạo thumbnail
-        if self.video_file and not self.thumbnail:
-            self.generate_thumbnail()
-            
-    def generate_thumbnail(self):
-        try:
-            clip = VideoFileClip(self.video_file.path)
-            frame = clip.get_frame(1.0)  # Lấy frame ở giây thứ 1
-            image = Image.fromarray(frame)
-
-            thumb_io = BytesIO()
-            image.save(thumb_io, format='JPEG')
-
-            thumb_name = os.path.splitext(os.path.basename(self.video_file.name))[0] + '_thumb.jpg'
-            self.thumbnail.save(thumb_name, ContentFile(thumb_io.getvalue()), save=False)
-
-            # Lưu lại model lần nữa để update thumbnail
-            super().save(update_fields=['thumbnail'])
-
-        except Exception as e:
-            print(f"Lỗi tạo thumbnail: {e}")
