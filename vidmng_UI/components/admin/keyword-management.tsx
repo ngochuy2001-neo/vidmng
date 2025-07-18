@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,51 +12,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Tag, TrendingUp, Hash } from "lucide-react"
+import axios from "axios"
 
-const mockKeywords = [
-  {
-    id: "1",
-    label: "React",
-    category: "Công nghệ",
-    usageCount: 1234,
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    label: "JavaScript",
-    category: "Công nghệ",
-    usageCount: 2567,
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "3",
-    label: "Tutorial",
-    category: "Giáo dục",
-    usageCount: 987,
-    createdAt: "2024-01-20",
-  },
-  {
-    id: "4",
-    label: "Cooking",
-    category: "Ẩm thực",
-    usageCount: 456,
-    createdAt: "2024-02-01",
-  },
-  {
-    id: "5",
-    label: "Travel",
-    category: "Du lịch",
-    usageCount: 789,
-    createdAt: "2024-01-25",
-  },
-  {
-    id: "6",
-    label: "Gaming",
-    category: "Giải trí",
-    usageCount: 1567,
-    createdAt: "2024-01-18",
-  },
-]
+const api = axios.create({
+  baseURL: "http://192.168.10.83/api/",
+})
 
 const KEYWORD_CATEGORIES = [
   "Công nghệ",
@@ -73,18 +33,52 @@ const KEYWORD_CATEGORIES = [
   "Khác",
 ]
 
+// Định nghĩa type cho keyword
+interface Keyword {
+  id: string
+  label: string
+  category: string
+  usageCount: number
+  createdAt: string
+}
+
 export function KeywordManagement() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [keywords, setKeywords] = useState(mockKeywords)
+  const [keywords, setKeywords] = useState<Keyword[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [filterCategory, setFilterCategory] = useState("all")
   const [newKeyword, setNewKeyword] = useState({
     label: "",
-    category: "",
+    slug: "",
   })
-
-  const [editingKeyword, setEditingKeyword] = useState<(typeof mockKeywords)[0] | null>(null)
+  const [editingKeyword, setEditingKeyword] = useState<Keyword | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  // Fetch keywords from API
+  useEffect(() => {
+    const fetchKeywords = async () => {
+      setIsLoading(true)
+      try {
+        const res = await api.get("/tags/")
+        setKeywords(
+          res.data.map((item: any) => ({
+            id: item.id.toString(),
+            label: item.name,
+            category: item.slug, // Nếu có category thực thì sửa lại
+            usageCount: item.video_count || 0,
+            createdAt: item.created_at || "",
+          }))
+        )
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Lỗi khi lấy keywords:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchKeywords()
+  }, [])
 
   const getPopularityBadge = (usageCount: number) => {
     if (usageCount > 1000) {
@@ -102,52 +96,90 @@ export function KeywordManagement() {
     }
   }
 
-  const handleDelete = (keywordId: string) => {
-    setKeywords(keywords.filter((keyword) => keyword.id !== keywordId))
-  }
-
-  const handleAddKeyword = () => {
-    const keyword = {
-      id: Date.now().toString(),
-      ...newKeyword,
-      usageCount: 0,
-      createdAt: new Date().toISOString().split("T")[0],
+  const handleDelete = async (keywordId: string) => {
+    setIsLoading(true)
+    try {
+      await api.delete(`/tags/${keywordId}/`)
+      setKeywords((prev) => prev.filter((keyword) => keyword.id !== keywordId))
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Lỗi khi xóa keyword:", err)
+    } finally {
+      setIsLoading(false)
     }
-    setKeywords([...keywords, keyword])
-    setNewKeyword({ label: "", category: "" })
-    setIsAddDialogOpen(false)
   }
 
-  const handleEdit = (keyword: (typeof mockKeywords)[0]) => {
+  const handleAddKeyword = async () => {
+    setIsLoading(true)
+    try {
+      const res = await api.post("/tags/", {
+        name: newKeyword.label,
+        slug: newKeyword.slug || newKeyword.label.toLowerCase().replace(/\s+/g, "-"),
+      })
+      setKeywords((prev) => [
+        ...prev,
+        {
+          id: res.data.id.toString(),
+          label: res.data.name,
+          category: res.data.slug,
+          usageCount: res.data.video_count || 0,
+          createdAt: res.data.created_at || "",
+        } as Keyword,
+      ])
+      setNewKeyword({ label: "", slug: "" })
+      setIsAddDialogOpen(false)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Lỗi khi thêm keyword:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEdit = (keyword: Keyword) => {
     setEditingKeyword(keyword)
     setNewKeyword({
       label: keyword.label,
-      category: keyword.category,
+      slug: keyword.category,
     })
     setIsEditDialogOpen(true)
   }
 
-  const handleUpdateKeyword = () => {
+  const handleUpdateKeyword = async () => {
     if (!editingKeyword) return
-
-    const updatedKeyword = {
-      ...editingKeyword,
-      ...newKeyword,
+    setIsLoading(true)
+    try {
+      const res = await api.patch(`/tags/${editingKeyword.id}/`, {
+        name: newKeyword.label,
+        slug: newKeyword.slug || newKeyword.label.toLowerCase().replace(/\s+/g, "-"),
+      })
+      setKeywords((prev) =>
+        prev.map((kw) =>
+          kw.id === editingKeyword.id
+            ? {
+                ...kw,
+                label: res.data.name,
+                category: res.data.slug,
+              }
+            : kw
+        )
+      )
+      setNewKeyword({ label: "", slug: "" })
+      setEditingKeyword(null)
+      setIsEditDialogOpen(false)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Lỗi khi cập nhật keyword:", err)
+    } finally {
+      setIsLoading(false)
     }
-
-    setKeywords(keywords.map((kw) => (kw.id === editingKeyword.id ? updatedKeyword : kw)))
-    setNewKeyword({ label: "", category: "" })
-    setEditingKeyword(null)
-    setIsEditDialogOpen(false)
   }
 
   const filteredKeywords = keywords.filter((keyword) => {
     const matchesSearch =
       keyword.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      keyword.category.toLowerCase().includes(searchQuery.toLowerCase())
-
+      (keyword.category && keyword.category.toLowerCase().includes(searchQuery.toLowerCase()))
     const matchesCategory = filterCategory === "all" || keyword.category === filterCategory
-
     return matchesSearch && matchesCategory
   })
 
@@ -187,22 +219,13 @@ export function KeywordManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select
-                      value={newKeyword.category}
-                      onValueChange={(value) => setNewKeyword({ ...newKeyword, category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {KEYWORD_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="slug">Slug</Label>
+                    <Input
+                      id="slug"
+                      value={newKeyword.slug}
+                      onChange={(e) => setNewKeyword({ ...newKeyword, slug: e.target.value })}
+                      placeholder="react-js"
+                    />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -231,29 +254,20 @@ export function KeywordManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-category">Category</Label>
-                    <Select
-                      value={newKeyword.category}
-                      onValueChange={(value) => setNewKeyword({ ...newKeyword, category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {KEYWORD_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="edit-slug">Slug</Label>
+                    <Input
+                      id="edit-slug"
+                      value={newKeyword.slug}
+                      onChange={(e) => setNewKeyword({ ...newKeyword, slug: e.target.value })}
+                      placeholder="react-js"
+                    />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
                       onClick={() => {
                         setIsEditDialogOpen(false)
-                        setNewKeyword({ label: "", category: "" })
+                        setNewKeyword({ label: "", slug: "" })
                         setEditingKeyword(null)
                       }}
                     >
@@ -344,12 +358,15 @@ export function KeywordManagement() {
                   <TableHead>Keyword</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Lượt sử dụng</TableHead>
-                  <TableHead>Độ phổ biến</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
                   <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">Đang tải dữ liệu...</TableCell>
+                  </TableRow>
+                )}
                 {filteredKeywords.map((keyword) => (
                   <TableRow key={keyword.id}>
                     <TableCell>
@@ -362,8 +379,6 @@ export function KeywordManagement() {
                       <Badge variant="outline">{keyword.category}</Badge>
                     </TableCell>
                     <TableCell>{keyword.usageCount.toLocaleString()}</TableCell>
-                    <TableCell>{getPopularityBadge(keyword.usageCount)}</TableCell>
-                    <TableCell>{new Date(keyword.createdAt).toLocaleDateString("vi-VN")}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -389,7 +404,7 @@ export function KeywordManagement() {
             </Table>
           </div>
 
-          {filteredKeywords.length === 0 && (
+          {filteredKeywords.length === 0 && !isLoading && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">Không tìm thấy keyword nào</p>
             </div>
