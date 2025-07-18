@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,75 +13,169 @@ import { Textarea } from "@/components/ui/textarea"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, FolderOpen, Video, Upload, ImageIcon } from "lucide-react"
 import Image from "next/image"
+import axios from "axios"
 
-const mockCategories = [
-  {
-    id: "1",
-    name: "Công nghệ",
-    description: "Video về công nghệ, lập trình, AI, và các xu hướng tech mới nhất",
-    image: "/placeholder.svg?height=200&width=300",
-    videoCount: 1234,
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    name: "Giải trí",
-    description: "Video giải trí, comedy, gaming, và các nội dung vui nhộn",
-    image: "/placeholder.svg?height=200&width=300",
-    videoCount: 2567,
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "3",
-    name: "Giáo dục",
-    description: "Video học tập, tutorial, hướng dẫn và kiến thức bổ ích",
-    image: "/placeholder.svg?height=200&width=300",
-    videoCount: 987,
-    createdAt: "2024-01-20",
-  },
-  {
-    id: "4",
-    name: "Ẩm thực",
-    description: "Video nấu ăn, review món ăn, và văn hóa ẩm thực",
-    image: "/placeholder.svg?height=200&width=300",
-    videoCount: 456,
-    createdAt: "2024-02-01",
-  },
-  {
-    id: "5",
-    name: "Du lịch",
-    description: "Video du lịch, khám phá địa điểm và trải nghiệm",
-    image: "/placeholder.svg?height=200&width=300",
-    videoCount: 789,
-    createdAt: "2024-01-25",
-  },
-  {
-    id: "6",
-    name: "Thể thao",
-    description: "Video thể thao, tin tức và highlight các trận đấu",
-    image: "/placeholder.svg?height=200&width=300",
-    videoCount: 234,
-    createdAt: "2024-02-10",
-  },
-]
+const api = axios.create({
+  baseURL: "http://192.168.10.83/api/",
+})
+
+// Định nghĩa type cho category
+interface Category {
+  id: string
+  name: string
+  slug: string
+  description: string
+  image: string
+  videoCount: number
+  createdAt: string
+}
 
 export function CategoryManagement() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [categories, setCategories] = useState(mockCategories)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>("")
   const [newCategory, setNewCategory] = useState({
     name: "",
+    slug: "",
     description: "",
     image: "",
   })
-
-  const [editingCategory, setEditingCategory] = useState<(typeof mockCategories)[0] | null>(null)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
-  const handleDelete = (categoryId: string) => {
-    setCategories(categories.filter((cat) => cat.id !== categoryId))
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoading(true)
+      try {
+        const res = await api.get("/categories/")
+        setCategories(
+          res.data.map((item: any) => ({
+            id: item.id.toString(),
+            name: item.name,
+            slug: item.slug,
+            description: item.description,
+            image: item.image || "/placeholder.svg?height=200&width=300",
+            videoCount: item.video_count || 0,
+            createdAt: item.created_at || "",
+          }))
+        )
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Lỗi khi lấy categories:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  // Thêm category
+  const handleAddCategory = async () => {
+    setIsLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append("name", newCategory.name)
+      formData.append("slug", newCategory.slug)
+      formData.append("description", newCategory.description)
+      if (selectedImage) {
+        formData.append("image", selectedImage)
+      }
+      const res = await api.post("/categories/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      setCategories((prev) => [
+        ...prev,
+        {
+          id: res.data.id.toString(),
+          name: res.data.name,
+          slug: res.data.slug,
+          description: res.data.description,
+          image: res.data.image || "/placeholder.svg?height=200&width=300",
+          videoCount: res.data.video_count || 0,
+          createdAt: res.data.created_at || "",
+        } as Category,
+      ])
+      setNewCategory({ name: "", slug: "", description: "", image: "" })
+      setSelectedImage(null)
+      setImagePreview("")
+      setIsAddDialogOpen(false)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Lỗi khi thêm category:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Xóa category
+  const handleDelete = async (categoryId: string) => {
+    setIsLoading(true)
+    try {
+      await api.delete(`/categories/${categoryId}/`)
+      setCategories((prev) => prev.filter((cat) => cat.id !== categoryId))
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Lỗi khi xóa category:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Sửa category
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category)
+    setNewCategory({
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      image: category.image,
+    })
+    setImagePreview(category.image)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory) return
+    setIsLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append("name", newCategory.name)
+      formData.append("slug", newCategory.slug)
+      formData.append("description", newCategory.description)
+      if (selectedImage) {
+        formData.append("image", selectedImage)
+      }
+      const res = await api.patch(`/categories/${editingCategory.id}/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      setCategories((prev) =>
+        prev.map((cat) =>
+          cat.id === editingCategory.id
+            ? {
+                ...cat,
+                name: res.data.name,
+                slug: res.data.slug,
+                description: res.data.description,
+                image: res.data.image || "/placeholder.svg?height=200&width=300",
+              }
+            : cat
+        )
+      )
+      setNewCategory({ name: "", slug: "", description: "", image: "" })
+      setSelectedImage(null)
+      setImagePreview("")
+      setEditingCategory(null)
+      setIsEditDialogOpen(false)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Lỗi khi cập nhật category:", err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,49 +190,6 @@ export function CategoryManagement() {
       }
       reader.readAsDataURL(file)
     }
-  }
-
-  const handleAddCategory = () => {
-    const category = {
-      id: Date.now().toString(),
-      ...newCategory,
-      image: imagePreview || "/placeholder.svg?height=200&width=300",
-      videoCount: 0,
-      createdAt: new Date().toISOString().split("T")[0],
-    }
-    setCategories([...categories, category])
-    setNewCategory({ name: "", description: "", image: "" })
-    setSelectedImage(null)
-    setImagePreview("")
-    setIsAddDialogOpen(false)
-  }
-
-  const handleEdit = (category: (typeof mockCategories)[0]) => {
-    setEditingCategory(category)
-    setNewCategory({
-      name: category.name,
-      description: category.description,
-      image: category.image,
-    })
-    setImagePreview(category.image)
-    setIsEditDialogOpen(true)
-  }
-
-  const handleUpdateCategory = () => {
-    if (!editingCategory) return
-
-    const updatedCategory = {
-      ...editingCategory,
-      ...newCategory,
-      image: imagePreview || editingCategory.image,
-    }
-
-    setCategories(categories.map((cat) => (cat.id === editingCategory.id ? updatedCategory : cat)))
-    setNewCategory({ name: "", description: "", image: "" })
-    setSelectedImage(null)
-    setImagePreview("")
-    setEditingCategory(null)
-    setIsEditDialogOpen(false)
   }
 
   const filteredCategories = categories.filter(
@@ -179,6 +229,16 @@ export function CategoryManagement() {
                       value={newCategory.name}
                       onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                       placeholder="Nhập tên category..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="slug">Slug *</Label>
+                    <Input
+                      id="slug"
+                      value={newCategory.slug}
+                      onChange={(e) => setNewCategory({ ...newCategory, slug: e.target.value })}
+                      placeholder="cong-nghe"
                     />
                   </div>
 
@@ -234,7 +294,7 @@ export function CategoryManagement() {
                       variant="outline"
                       onClick={() => {
                         setIsAddDialogOpen(false)
-                        setNewCategory({ name: "", description: "", image: "" })
+                        setNewCategory({ name: "", slug: "", description: "", image: "" })
                         setSelectedImage(null)
                         setImagePreview("")
                       }}
@@ -243,9 +303,9 @@ export function CategoryManagement() {
                     </Button>
                     <Button
                       onClick={handleAddCategory}
-                      disabled={!newCategory.name || !newCategory.description || !imagePreview}
+                      disabled={!newCategory.name || !newCategory.slug || !newCategory.description || !imagePreview || isLoading}
                     >
-                      Thêm Category
+                      {isLoading ? "Đang thêm..." : "Thêm Category"}
                     </Button>
                   </div>
                 </div>
@@ -266,6 +326,16 @@ export function CategoryManagement() {
                       value={newCategory.name}
                       onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                       placeholder="Nhập tên category..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-slug">Slug *</Label>
+                    <Input
+                      id="edit-slug"
+                      value={newCategory.slug}
+                      onChange={(e) => setNewCategory({ ...newCategory, slug: e.target.value })}
+                      placeholder="cong-nghe"
                     />
                   </div>
 
@@ -322,7 +392,7 @@ export function CategoryManagement() {
                       variant="outline"
                       onClick={() => {
                         setIsEditDialogOpen(false)
-                        setNewCategory({ name: "", description: "", image: "" })
+                        setNewCategory({ name: "", slug: "", description: "", image: "" })
                         setSelectedImage(null)
                         setImagePreview("")
                         setEditingCategory(null)
@@ -332,9 +402,9 @@ export function CategoryManagement() {
                     </Button>
                     <Button
                       onClick={handleUpdateCategory}
-                      disabled={!newCategory.name || !newCategory.description || !imagePreview}
+                      disabled={!newCategory.name || !newCategory.slug || !newCategory.description || !imagePreview || isLoading}
                     >
-                      Cập nhật Category
+                      {isLoading ? "Đang cập nhật..." : "Cập nhật Category"}
                     </Button>
                   </div>
                 </div>
