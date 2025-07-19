@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { VideoGrid } from "@/components/video-grid"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,11 +8,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Play, Users, Bell, Filter, ChevronDown, X } from "lucide-react"
+import { Play, Users, Bell, Filter, ChevronDown, X, Loader2 } from "lucide-react"
+import { categoryAPI, type Category } from "@/lib/api"
 
 interface CategoryVideoPageProps {
   slug: string
 }
+
+// Màu gradient cho các category
+const gradientColors = [
+  "from-pink-500 to-rose-500",
+  "from-purple-500 to-indigo-500", 
+  "from-blue-500 to-cyan-500",
+  "from-orange-500 to-red-500",
+  "from-green-500 to-emerald-500",
+  "from-gray-500 to-slate-500",
+  "from-yellow-500 to-orange-500",
+  "from-indigo-500 to-purple-500",
+  "from-rose-500 to-pink-500",
+  "from-teal-500 to-green-500",
+  "from-red-500 to-rose-500",
+  "from-violet-500 to-purple-500",
+]
+
+// Options cho các filter
+const sortOptions = [
+  { value: "latest", label: "Mới nhất" },
+  { value: "popular", label: "Phổ biến" },
+  { value: "views", label: "Lượt xem cao nhất" },
+  { value: "rating", label: "Đánh giá cao nhất" },
+]
+
+const uploadTimeOptions = [
+  { value: "all", label: "Tất cả thời gian" },
+  { value: "hour", label: "Trong 1 giờ" },
+  { value: "today", label: "Hôm nay" },
+  { value: "week", label: "Tuần này" },
+  { value: "month", label: "Tháng này" },
+  { value: "year", label: "Năm nay" },
+]
+
+const durationOptions = [
+  { value: "all", label: "Tất cả thời lượng" },
+  { value: "short", label: "Dưới 4 phút" },
+  { value: "medium", label: "4-20 phút" },
+  { value: "long", label: "Trên 20 phút" },
+]
 
 export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([])
@@ -21,15 +62,29 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
   const [uploadTime, setUploadTime] = useState("all")
   const [showFilters, setShowFilters] = useState(false)
   const [keywordOpen, setKeywordOpen] = useState(true)
+  const [category, setCategory] = useState<Category | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const category = categoryData[slug] || {
-    name: "Danh mục",
-    description: "Khám phá nội dung trong danh mục này",
-    color: "from-gray-500 to-slate-500",
-    videoCount: "0",
-    subscriberCount: "0",
-    image: "/placeholder.svg?height=400&width=800",
-    keywords: [],
+  useEffect(() => {
+    fetchCategory()
+  }, [slug])
+
+  const fetchCategory = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await categoryAPI.getCategoryBySlug(slug)
+      if (data) {
+        setCategory(data)
+      } else {
+        setError("Không tìm thấy danh mục.")
+      }
+    } catch (err: any) {
+      setError("Không thể tải thông tin danh mục. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleKeyword = (keyword: string) => {
@@ -45,14 +100,41 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
 
   const hasActiveFilters = selectedKeywords.length > 0 || duration !== "all" || uploadTime !== "all"
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span>Đang tải thông tin danh mục...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !category) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center text-destructive">
+          {error || "Không tìm thấy danh mục."}
+        </div>
+      </div>
+    )
+  }
+
+  // Lấy màu gradient cho category
+  const colorIndex = category.id ? category.id % gradientColors.length : 0
+  const gradientColor = gradientColors[colorIndex]
+  const videoCount = category.video_count?.toLocaleString("vi-VN") || "0"
+  const image = category.image || "/placeholder.svg?height=400&width=800"
+
   return (
     <div className="min-h-screen bg-background">
       {/* Category Header */}
-      <div className={`relative bg-gradient-to-r ${category.color} text-white`}>
+      <div className={`relative bg-gradient-to-r ${gradientColor} text-white`}>
         {/* Background Image Overlay */}
         <div
           className="absolute inset-0 bg-cover bg-center opacity-20"
-          style={{ backgroundImage: `url(${category.image})` }}
+          style={{ backgroundImage: `url(${image})` }}
         />
         <div className="absolute inset-0 bg-black/40" />
 
@@ -62,17 +144,17 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
               Danh mục
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold mb-4">{category.name}</h1>
-            <p className="text-xl md:text-2xl mb-6 opacity-90">{category.description}</p>
+            <p className="text-xl md:text-2xl mb-6 opacity-90">{category.description || "Không có mô tả"}</p>
 
             <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center mb-6">
               <div className="flex items-center gap-6 text-lg">
                 <div className="flex items-center gap-2">
                   <Play className="h-5 w-5" />
-                  <span>{category.videoCount} videos</span>
+                  <span>{videoCount} videos</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  <span>{category.subscriberCount} người theo dõi</span>
+                  <span>Danh mục</span>
                 </div>
               </div>
 
@@ -85,19 +167,19 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
             {/* Category Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="text-center">
-                <div className="text-2xl font-bold">2.5M</div>
-                <div className="text-sm opacity-80">Tổng lượt xem</div>
+                <div className="text-2xl font-bold">{videoCount}</div>
+                <div className="text-sm opacity-80">Tổng video</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">15K</div>
+                <div className="text-2xl font-bold">-</div>
                 <div className="text-sm opacity-80">Video mới/tháng</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">4.8</div>
+                <div className="text-2xl font-bold">-</div>
                 <div className="text-sm opacity-80">Đánh giá trung bình</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">89%</div>
+                <div className="text-2xl font-bold">-</div>
                 <div className="text-sm opacity-80">Tỷ lệ hài lòng</div>
               </div>
             </div>
@@ -177,15 +259,15 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
                   </Select>
                 </div>
 
-                {/* Keywords */}
-                <Collapsible open={keywordOpen} onOpenChange={setKeywordOpen}>
+                {/* Keywords - Tạm thời ẩn vì chưa có data */}
+                {/* <Collapsible open={keywordOpen} onOpenChange={setKeywordOpen}>
                   <CollapsibleTrigger className="flex items-center justify-between w-full">
                     <h4 className="font-medium">Keywords phổ biến</h4>
                     <ChevronDown className={`h-4 w-4 transition-transform ${keywordOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 mt-3">
                     <div className="max-h-48 overflow-y-auto space-y-2">
-                      {category.keywords.map((keyword: string) => (
+                      {category.keywords?.map((keyword: string) => (
                         <div key={keyword} className="flex items-center space-x-2">
                           <Checkbox
                             id={`keyword-${keyword}`}
@@ -202,7 +284,7 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
                       ))}
                     </div>
                   </CollapsibleContent>
-                </Collapsible>
+                </Collapsible> */}
               </CardContent>
             </Card>
           </div>
@@ -261,11 +343,11 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
               </div>
             )}
 
-            {/* Popular Keywords */}
-            <div className="mb-8">
+            {/* Popular Keywords - Tạm thời ẩn vì chưa có data */}
+            {/* <div className="mb-8">
               <h3 className="text-lg font-semibold mb-4">Từ khóa phổ biến</h3>
               <div className="flex flex-wrap gap-2">
-                {category.keywords.slice(0, 8).map((keyword: string) => (
+                {category.keywords?.slice(0, 8).map((keyword: string) => (
                   <Badge
                     key={keyword}
                     variant={selectedKeywords.includes(keyword) ? "default" : "secondary"}
@@ -276,7 +358,7 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
                   </Badge>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Video Grid */}
             <VideoGrid />

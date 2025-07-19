@@ -1,9 +1,9 @@
 "use client"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThumbsUp, ThumbsDown, Share, Download, Flag } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Share, Download, Flag, Loader2 } from "lucide-react"
+import { videoAPI, type Video } from "@/lib/api"
 
 interface VideoInfoProps {
   videoId: string
@@ -13,40 +13,60 @@ export function VideoInfo({ videoId }: VideoInfoProps) {
   const [liked, setLiked] = useState(false)
   const [disliked, setDisliked] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
+  const [video, setVideo] = useState<Video | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data
-  const videoData = {
-    title: "Hướng dẫn lập trình React từ cơ bản đến nâng cao",
-    views: "125,432",
-    uploadDate: "15 thg 12, 2024",
-    likes: "2.1K",
-    dislikes: "23",
-    channel: {
-      name: "Tech Academy",
-      avatar: "/placeholder.svg?height=40&width=40",
-      subscribers: "125K",
-    },
-    description: `Trong video này, chúng ta sẽ học React từ những kiến thức cơ bản nhất đến nâng cao. Video bao gồm:
+  useEffect(() => {
+    fetchVideo()
+    // eslint-disable-next-line
+  }, [videoId])
 
-- Giới thiệu về React và JSX
-- Components và Props
-- State và Lifecycle
-- Event Handling
-- Hooks (useState, useEffect, useContext)
-- Routing với React Router
-- State Management với Redux
-- Best Practices và Performance Optimization
-
-Phù hợp cho người mới bắt đầu và những ai muốn nâng cao kỹ năng React.`,
+  const fetchVideo = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await videoAPI.getVideo(Number(videoId))
+      setVideo(data)
+    } catch (err: any) {
+      setError("Không thể tải thông tin video. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
   }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-8 justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span>Đang tải thông tin video...</span>
+      </div>
+    )
+  }
+
+  if (error || !video) {
+    return (
+      <div className="text-center text-destructive py-8">
+        {error || "Không tìm thấy video."}
+      </div>
+    )
+  }
+
+  // Format dữ liệu
+  const views = video.view_count?.toLocaleString("vi-VN") || "0"
+  const uploadDate = video.created_at ? new Date(video.created_at).toLocaleDateString("vi-VN") : ""
+  const likes = video.is_favorite ? "Yêu thích" : ""
+  const category = video.category_name || "Danh mục"
+  const description = video.description || "Không có mô tả."
+  const thumbnail = video.thumbnail || "/placeholder.svg?height=40&width=40"
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold mb-2">{videoData.title}</h1>
+        <h1 className="text-xl md:text-2xl font-bold mb-2">{video.title}</h1>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="text-sm text-muted-foreground">
-            {videoData.views} lượt xem • {videoData.uploadDate}
+            {views} lượt xem • {uploadDate}
           </div>
 
           <div className="flex items-center gap-2">
@@ -61,7 +81,7 @@ Phù hợp cho người mới bắt đầu và những ai muốn nâng cao kỹ 
                 }}
               >
                 <ThumbsUp className="h-4 w-4 mr-1" />
-                {videoData.likes}
+                {likes || "Thích"}
               </Button>
               <div className="w-px h-6 bg-border" />
               <Button
@@ -97,12 +117,12 @@ Phù hợp cho người mới bắt đầu và những ai muốn nâng cao kỹ 
       <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={videoData.channel.avatar || "/placeholder.svg"} alt={videoData.channel.name} />
-            <AvatarFallback>{videoData.channel.name[0]}</AvatarFallback>
+            <AvatarImage src={thumbnail} alt={category} />
+            <AvatarFallback>{category[0]}</AvatarFallback>
           </Avatar>
           <div>
-            <h3 className="font-medium">{videoData.channel.name}</h3>
-            <p className="text-sm text-muted-foreground">{videoData.channel.subscribers} người đăng ký</p>
+            <h3 className="font-medium">{category}</h3>
+            {/* Có thể bổ sung thêm thông tin khác nếu backend trả về */}
           </div>
         </div>
 
@@ -113,7 +133,7 @@ Phù hợp cho người mới bắt đầu và những ai muốn nâng cao kỹ 
 
       <div className="bg-muted/50 rounded-lg p-4">
         <h3 className="font-medium mb-2">Mô tả</h3>
-        <p className="text-sm whitespace-pre-line text-muted-foreground">{videoData.description}</p>
+        <p className="text-sm whitespace-pre-line text-muted-foreground">{description}</p>
       </div>
     </div>
   )
