@@ -161,6 +161,14 @@ export const categoryAPI = {
     const response = await api.get(`/categories/${id}/`)
     return response.data
   },
+
+  // Lấy category theo slug
+  getCategoryBySlug: async (slug: string) => {
+    const response = await api.get('/categories/', {
+      params: { slug }
+    })
+    return response.data[0] || null // Trả về category đầu tiên tìm thấy
+  },
 }
 
 // Tag API
