@@ -1,73 +1,77 @@
+"use client"
+import { useEffect, useState } from "react"
 import { VideoCard } from "@/components/video-card"
+import { videoAPI, type Video } from "@/lib/api"
+import { Loader2 } from "lucide-react"
 
-const mockVideos = [
-  {
-    id: "1",
-    title: "Hướng dẫn lập trình React từ cơ bản đến nâng cao",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    duration: "15:30",
-    views: "125K",
-    uploadTime: "2 ngày trước",
-    channel: "Tech Academy",
-    channelAvatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "2",
-    title: "Top 10 địa điểm du lịch đẹp nhất Việt Nam 2024",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    duration: "12:45",
-    views: "89K",
-    uploadTime: "1 tuần trước",
-    channel: "Travel Vietnam",
-    channelAvatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "3",
-    title: "Cách nấu phở bò chuẩn vị Hà Nội",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    duration: "8:20",
-    views: "234K",
-    uploadTime: "3 ngày trước",
-    channel: "Món Ngon Mỗi Ngày",
-    channelAvatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "4",
-    title: "Review iPhone 15 Pro Max - Có đáng để nâng cấp?",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    duration: "18:15",
-    views: "456K",
-    uploadTime: "5 ngày trước",
-    channel: "Tech Review VN",
-    channelAvatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "5",
-    title: "Workout tại nhà 30 phút - Giảm cân hiệu quả",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    duration: "30:00",
-    views: "67K",
-    uploadTime: "1 ngày trước",
-    channel: "Fitness Life",
-    channelAvatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "6",
-    title: "Tin tức công nghệ tuần này - AI và tương lai",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    duration: "22:30",
-    views: "178K",
-    uploadTime: "4 ngày trước",
-    channel: "Tech News",
-    channelAvatar: "/placeholder.svg?height=40&width=40",
-  },
-]
+function formatDateVN(dateString: string) {
+  const date = new Date(dateString)
+  return date.toLocaleDateString("vi-VN")
+}
 
 export function VideoGrid() {
+  const [videos, setVideos] = useState<Video[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchVideos()
+  }, [])
+
+  const fetchVideos = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await videoAPI.getVideos()
+      setVideos(data.results || data)
+    } catch (err: any) {
+      setError("Không thể tải danh sách video. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin mr-2" />
+        <span>Đang tải video...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-destructive py-8">
+        {error}
+      </div>
+    )
+  }
+
+  if (videos.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        Không có video nào.
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {mockVideos.map((video) => (
-        <VideoCard key={video.id} video={video} />
+      {videos.map((video) => (
+        <VideoCard
+          key={video.id}
+          video={{
+            id: String(video.id),
+            title: video.title,
+            thumbnail: video.thumbnail || "/placeholder.svg?height=200&width=300",
+            views: video.view_count?.toLocaleString("vi-VN") || "0",
+            uploadTime: video.created_at ? formatDateVN(video.created_at) : "",
+            duration: "", // Nếu backend có duration thì truyền vào, còn không thì để rỗng
+            channel: video.category_name || "",
+            channelAvatar: "/placeholder.svg?height=40&width=40",
+          }}
+        />
       ))}
     </div>
   )

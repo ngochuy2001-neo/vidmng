@@ -73,10 +73,16 @@ export const videoAPI = {
   },
 
   // Tạo video mới
-  createVideo: async (data: FormData) => {
+  createVideo: async (data: FormData, onProgress?: (progress: number) => void) => {
     const response = await api.post('/videos/', data, {
       headers: {
         'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onProgress) {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          onProgress(progress)
+        }
       },
     })
     return response.data

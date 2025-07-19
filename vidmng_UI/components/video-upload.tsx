@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload, Video, X, Loader2 } from "lucide-react"
 import { KeywordsInput } from "@/components/keywords-input"
-import { categoryAPI, tagAPI, type Category, type Tag } from "@/lib/api"
+import { categoryAPI, tagAPI, videoAPI, type Category, type Tag } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 export function VideoUpload() {
@@ -20,6 +20,8 @@ export function VideoUpload() {
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -113,7 +115,7 @@ export function VideoUpload() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedFile) {
       toast({
         title: "Lỗi",
@@ -127,12 +129,69 @@ export function VideoUpload() {
       return
     }
 
-    // Handle upload logic here
-    console.log("Upload data:", { file: selectedFile, ...formData })
-    toast({
-      title: "Thành công",
-      description: "Video đã được tải lên thành công!",
-    })
+    try {
+      setUploading(true)
+      setUploadProgress(0)
+
+      // Tạo FormData để upload file
+      const uploadFormData = new FormData()
+      uploadFormData.append('title', formData.title)
+      uploadFormData.append('description', formData.description)
+      uploadFormData.append('video_file', selectedFile)
+      
+      if (formData.category) {
+        uploadFormData.append('category', formData.category)
+      }
+
+      // Thêm tag IDs
+      const tagIds = tags
+        .filter(tag => formData.keywords.includes(tag.slug))
+        .map(tag => tag.id)
+      
+      if (tagIds.length > 0) {
+        tagIds.forEach(tagId => {
+          uploadFormData.append('tag_ids', tagId.toString())
+        })
+      }
+
+      // Upload video với progress tracking
+      const response = await videoAPI.createVideo(uploadFormData, (progress) => {
+        setUploadProgress(progress)
+      })
+      
+      toast({
+        title: "Thành công",
+        description: "Video đã được tải lên thành công!",
+      })
+
+      // Reset form
+      setSelectedFile(null)
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        privacy: "public",
+        keywords: [],
+      })
+      setErrors({})
+      setUploadProgress(100)
+
+    } catch (err: any) {
+      console.error('Lỗi khi upload video:', err)
+      const errorMessage = err.response?.data?.detail || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Không thể tải lên video. Vui lòng thử lại.'
+      
+      toast({
+        title: "Lỗi",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -200,7 +259,7 @@ export function VideoUpload() {
                   />
                 </label>
               </Button>
-              <p className="text-sm text-muted-foreground mt-4">Hỗ trợ: MP4, AVI, MOV, WMV (tối đa 2GB)</p>
+              <p className="text-sm text-muted-foreground mt-4">Hỗ trợ: MP4, AVI, MOV, WMV (tối đa 500MB)</p>
             </div>
           ) : (
             <div className="flex items-center gap-4 p-4 border rounded-lg bg-muted/50">
@@ -209,7 +268,7 @@ export function VideoUpload() {
                 <p className="font-medium">{selectedFile.name}</p>
                 <p className="text-sm text-muted-foreground">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedFile(null)} disabled={uploading}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -236,6 +295,7 @@ export function VideoUpload() {
                 onChange={(e) => handleInputChange("title", e.target.value)}
                 className={errors.title ? "border-destructive" : ""}
                 maxLength={100}
+                disabled={uploading}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 {errors.title ? (
@@ -259,6 +319,7 @@ export function VideoUpload() {
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 className={`min-h-[120px] ${errors.description ? "border-destructive" : ""}`}
                 maxLength={5000}
+                disabled={uploading}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 {errors.description ? (
@@ -276,7 +337,11 @@ export function VideoUpload() {
                 <Label htmlFor="category">
                   Danh mục <span className="text-destructive">*</span>
                 </Label>
-                <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => handleInputChange("category", value)}
+                  disabled={uploading}
+                >
                   <SelectTrigger className={errors.category ? "border-destructive" : ""}>
                     <SelectValue placeholder="Chọn danh mục phù hợp" />
                   </SelectTrigger>
@@ -318,13 +383,46 @@ export function VideoUpload() {
               )}
             </div>
 
+            {/* Upload Progress */}
+            {uploading && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Đang tải lên video...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-4 pt-4">
-              <Button onClick={handleSubmit} className="flex-1">
-                <Upload className="mr-2 h-4 w-4" />
-                Tải lên video
+              <Button 
+                onClick={handleSubmit} 
+                className="flex-1" 
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang tải lên...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Tải lên video
+                  </>
+                )}
               </Button>
-              <Button variant="outline" onClick={() => setSelectedFile(null)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedFile(null)}
+                disabled={uploading}
+              >
                 Hủy
               </Button>
             </div>
