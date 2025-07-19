@@ -195,7 +195,12 @@ export const tagAPI = {
         include_videos: includeVideos
       }
     })
-    return response.data[0] || null
+    // API trả về array, lấy item đầu tiên
+    const data = response.data
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0]
+    }
+    return null
   },
 
   // Lấy tags phổ biến

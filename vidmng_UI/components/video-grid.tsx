@@ -55,7 +55,8 @@ export function VideoGrid() {
         const tagData = await response.json()
         console.log('Tag with videos API response:', tagData)
         
-        if (tagData && tagData.length > 0) {
+        // API trả về array, lấy item đầu tiên
+        if (tagData && Array.isArray(tagData) && tagData.length > 0) {
           const tag = tagData[0]
           console.log('Tag object:', tag)
           console.log('Tag videos:', tag.videos)
