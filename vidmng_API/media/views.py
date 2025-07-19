@@ -168,6 +168,11 @@ class TagViewSet(viewsets.ModelViewSet):
         """Customize queryset"""
         queryset = Tag.objects.all()
         
+        # Filter theo slug
+        slug = self.request.query_params.get('slug', None)
+        if slug:
+            queryset = queryset.filter(slug=slug)
+        
         # Filter theo tham số query
         has_videos = self.request.query_params.get('has_videos', None)
         if has_videos is not None:
