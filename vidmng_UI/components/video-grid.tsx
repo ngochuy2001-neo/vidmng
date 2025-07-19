@@ -36,13 +36,18 @@ export function VideoGrid() {
         const response = await fetch(`http://192.168.10.83/api/categories/?slug=${categorySlug}&include_videos=true`)
         const categoryData = await response.json()
         console.log('Category with videos API response:', categoryData)
+        console.log('Response status:', response.status)
+        console.log('Response headers:', response.headers)
         
         if (categoryData && categoryData.length > 0) {
           const category = categoryData[0]
+          console.log('Category object:', category)
+          console.log('Category videos:', category.videos)
           // Sử dụng video từ category response
           data = { results: category.videos || [] }
-          console.log('Videos from category:', data)
+          console.log('Final data for videos:', data)
         } else {
+          console.log('No category found or empty response')
           data = { results: [] }
         }
       } else {
