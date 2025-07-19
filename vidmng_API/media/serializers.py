@@ -136,10 +136,6 @@ class VideoCreateUpdateSerializer(serializers.ModelSerializer):
     def validate_video_file(self, value):
         """Validate file video"""
         if value:
-            # Kiểm tra kích thước file (giới hạn 500MB)
-            if value.size > 500 * 1024 * 1024:
-                raise serializers.ValidationError("File video không được vượt quá 500MB")
-            
             # Kiểm tra định dạng file
             allowed_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm']
             if not any(value.name.lower().endswith(ext) for ext in allowed_extensions):

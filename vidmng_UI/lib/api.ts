@@ -46,7 +46,7 @@ export interface Tag {
 export interface VideoUpdateData {
   title?: string
   description?: string
-  category?: number
+  category?: number | null
   tag_ids?: number[]
   status?: 'draft' | 'published' | 'archived'
   is_favorite?: boolean

@@ -14,12 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
-import { videoAPI, categoryAPI, type Video, type Category } from "@/lib/api"
+import { videoAPI, categoryAPI, tagAPI, type Video, type Category, type Tag } from "@/lib/api"
 
 export function VideoManagement() {
   const [videos, setVideos] = useState<Video[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -32,6 +34,7 @@ export function VideoManagement() {
     description: "",
     category: "",
     status: "draft" as "draft" | "published" | "archived",
+    tag_ids: [] as number[],
   })
   const { toast } = useToast()
 
@@ -45,13 +48,15 @@ export function VideoManagement() {
       setLoading(true)
       setError(null)
       
-      const [videosData, categoriesData] = await Promise.all([
+      const [videosData, categoriesData, tagsData] = await Promise.all([
         videoAPI.getVideos(),
-        categoryAPI.getCategories()
+        categoryAPI.getCategories(),
+        tagAPI.getTags()
       ])
       
       setVideos(videosData.results || videosData)
       setCategories(categoriesData.results || categoriesData)
+      setTags(tagsData.results || tagsData)
     } catch (err: any) {
       console.error('Lỗi khi tải dữ liệu:', err)
       const errorMessage = err.response?.data?.detail || err.message || 'Không thể tải dữ liệu. Vui lòng thử lại sau.'
@@ -120,11 +125,16 @@ export function VideoManagement() {
   // Edit video
   const handleEdit = (video: Video) => {
     setEditingVideo(video)
+    // Lấy tag IDs từ tag names (cần map từ tag names sang tag IDs)
+    const tagIds = video.tag_names && Array.isArray(video.tag_names) ? 
+      tags.filter(tag => video.tag_names?.includes(tag.name)).map(tag => tag.id) : []
+    
     setEditFormData({
-      title: video.title,
-      description: video.description,
-      category: video.category_name,
-      status: video.status,
+      title: video.title || "",
+      description: video.description || "",
+      category: video.category_name || "none",
+      status: video.status || "draft",
+      tag_ids: tagIds,
     })
     setIsEditDialogOpen(true)
   }
@@ -135,19 +145,20 @@ export function VideoManagement() {
 
     try {
       setIsUpdating(true)
-      const categoryId = categories.find(cat => cat.name === editFormData.category)?.id
+      const categoryId = editFormData.category === "none" ? null : categories.find(cat => cat.name === editFormData.category)?.id
       
       const updateData = {
         title: editFormData.title,
         description: editFormData.description,
         category: categoryId,
         status: editFormData.status,
+        tag_ids: editFormData.tag_ids,
       }
 
       const updatedVideo = await videoAPI.updateVideo(editingVideo.id, updateData)
       
       setVideos(videos.map((vid) => (vid.id === editingVideo.id ? updatedVideo : vid)))
-      setEditFormData({ title: "", description: "", category: "", status: "draft" })
+      setEditFormData({ title: "", description: "", category: "", status: "draft", tag_ids: [] })
       setEditingVideo(null)
       setIsEditDialogOpen(false)
       
@@ -191,7 +202,8 @@ export function VideoManagement() {
   }
 
   // Format view count
-  const formatViewCount = (count: number) => {
+  const formatViewCount = (count: number | undefined) => {
+    if (!count || count === 0) return "0"
     if (count >= 1000000) {
       return `${(count / 1000000).toFixed(1)}M`
     } else if (count >= 1000) {
@@ -201,8 +213,13 @@ export function VideoManagement() {
   }
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("vi-VN")
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "N/A"
+    try {
+      return new Date(dateString).toLocaleDateString("vi-VN")
+    } catch (error) {
+      return "N/A"
+    }
   }
 
   // Get status badge
@@ -305,9 +322,9 @@ export function VideoManagement() {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-sm line-clamp-2 mb-1">{video.title}</h3>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{video.description}</p>
-                          {video.tag_names && video.tag_names.length > 0 && (
+                          <h3 className="font-medium text-sm line-clamp-2 mb-1">{video.title || "Không có tiêu đề"}</h3>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{video.description || "Không có mô tả"}</p>
+                          {video.tag_names && Array.isArray(video.tag_names) && video.tag_names.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {video.tag_names.slice(0, 2).map((tag, index) => (
                                 <Badge key={index} variant="outline" className="text-xs">
@@ -409,7 +426,7 @@ export function VideoManagement() {
                   <SelectValue placeholder="Chọn danh mục" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Không có</SelectItem>
+                  <SelectItem value="none">Không có</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
@@ -436,16 +453,48 @@ export function VideoManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-2">
+                {tags.map((tag) => (
+                  <div key={tag.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`tag-${tag.id}`}
+                      checked={editFormData.tag_ids.includes(tag.id)}
+                      onCheckedChange={(checked: boolean) => {
+                        if (checked) {
+                          setEditFormData({
+                            ...editFormData,
+                            tag_ids: [...editFormData.tag_ids, tag.id]
+                          })
+                        } else {
+                          setEditFormData({
+                            ...editFormData,
+                            tag_ids: editFormData.tag_ids.filter(id => id !== tag.id)
+                          })
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`tag-${tag.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {tag.name}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsEditDialogOpen(false)
-                  setEditFormData({ title: "", description: "", category: "", status: "draft" })
-                  setEditingVideo(null)
-                }}
-                disabled={isUpdating}
-              >
+                              <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditDialogOpen(false)
+                    setEditFormData({ title: "", description: "", category: "", status: "draft", tag_ids: [] })
+                    setEditingVideo(null)
+                  }}
+                  disabled={isUpdating}
+                >
                 Hủy
               </Button>
               <Button onClick={handleUpdateVideo} disabled={isUpdating}>
