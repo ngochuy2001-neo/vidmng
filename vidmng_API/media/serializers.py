@@ -33,7 +33,8 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
     
     def get_videos(self, obj):
         """Lấy danh sách video của category"""
-        videos = obj.video_set.filter(status='published').order_by('-created_at')
+        # Lấy tất cả video trong category, không filter theo status
+        videos = obj.video_set.all().order_by('-created_at')
         return VideoListSerializer(videos, many=True, context=self.context).data
     
     def validate_name(self, value):
