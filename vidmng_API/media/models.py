@@ -92,6 +92,7 @@ class Video(models.Model):
     def increment_view_count(self):
         self.view_count = models.F('view_count') + 1
         self.save(update_fields=['view_count'])
+        self.refresh_from_db(fields=['view_count'])
     
     def generate_slug(self):
         """Tự động tạo slug từ title"""
