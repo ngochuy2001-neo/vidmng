@@ -34,6 +34,7 @@ export interface Category {
   image: string | null
   created_at: string
   video_count: number
+  videos?: Video[]
 }
 
 export interface Tag {
@@ -58,6 +59,7 @@ export const videoAPI = {
   getVideos: async (params?: {
     search?: string
     category?: number
+    category__slug?: string
     status?: string
     tags?: string
     ordering?: string
@@ -163,9 +165,12 @@ export const categoryAPI = {
   },
 
   // Lấy category theo slug
-  getCategoryBySlug: async (slug: string) => {
+  getCategoryBySlug: async (slug: string, includeVideos: boolean = false) => {
     const response = await api.get('/categories/', {
-      params: { slug }
+      params: { 
+        slug,
+        include_videos: includeVideos
+      }
     })
     return response.data[0] || null // Trả về category đầu tiên tìm thấy
   },

@@ -100,6 +100,50 @@ export function CategoryVideoPage({ slug }: CategoryVideoPageProps) {
 
   const hasActiveFilters = selectedKeywords.length > 0 || duration !== "all" || uploadTime !== "all"
 
+  // Tạo search params cho VideoGrid
+  const getSearchParams = () => {
+    const params: any = {
+      status: 'published' // Chỉ hiển thị video đã publish
+    }
+
+    // Ordering
+    if (sortBy === 'latest') {
+      params.ordering = '-created_at'
+    } else if (sortBy === 'popular' || sortBy === 'views') {
+      params.ordering = '-view_count'
+    } else if (sortBy === 'rating') {
+      params.ordering = '-view_count' // Tạm thời dùng view_count thay cho rating
+    }
+
+    // Upload time filter
+    if (uploadTime !== 'all') {
+      const now = new Date()
+      let dateFrom = new Date()
+      
+      switch (uploadTime) {
+        case 'hour':
+          dateFrom.setHours(now.getHours() - 1)
+          break
+        case 'today':
+          dateFrom.setHours(0, 0, 0, 0)
+          break
+        case 'week':
+          dateFrom.setDate(now.getDate() - 7)
+          break
+        case 'month':
+          dateFrom.setMonth(now.getMonth() - 1)
+          break
+        case 'year':
+          dateFrom.setFullYear(now.getFullYear() - 1)
+          break
+      }
+      
+      params.date_from = dateFrom.toISOString().split('T')[0]
+    }
+
+    return params
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

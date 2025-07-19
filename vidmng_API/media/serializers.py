@@ -15,19 +15,26 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_video_count(self, obj):
         """Đếm số video trong category"""
         return obj.video_set.count()
-    
-    def validate_name(self, value):
-        """Validate tên category"""
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError("Tên danh mục phải có ít nhất 2 ký tự")
-        return value.strip()
-    
-    def validate_slug(self, value):
-        """Validate slug"""
-        if not value.replace('-', '').replace('_', '').isalnum():
-            raise serializers.ValidationError("Slug chỉ được chứa chữ cái, số, dấu gạch ngang và gạch dưới")
-        return value.lower()
 
+
+class CategoryDetailSerializer(serializers.ModelSerializer):
+    """Serializer cho Category với danh sách video"""
+    video_count = serializers.SerializerMethodField()
+    videos = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug', 'description', 'image', 'created_at', 'video_count', 'videos']
+        read_only_fields = ['id', 'created_at', 'video_count', 'videos']
+    
+    def get_video_count(self, obj):
+        """Đếm số video trong category"""
+        return obj.video_set.count()
+    
+    def get_videos(self, obj):
+        """Lấy danh sách video của category"""
+        videos = obj.video_set.filter(status='published').order_by('-created_at')
+        return VideoListSerializer(videos, many=True, context=self.context).data
     
     def validate_name(self, value):
         """Validate tên category"""
