@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import Category, Tag, Video
 from .serializers import (
-    CategorySerializer, TagSerializer, VideoListSerializer,
+    CategorySerializer, CategoryDetailSerializer, TagSerializer, VideoListSerializer,
     VideoDetailSerializer, VideoCreateUpdateSerializer,
     VideoStatsSerializer, VideoViewCountSerializer
 )
@@ -27,8 +27,15 @@ class CategoryViewSet(viewsets.ModelViewSet):
     """
     
     queryset = Category.objects.all()
-    serializer_class = CategorySerializer
     lookup_field = 'id'
+    
+    def get_serializer_class(self):
+        """Chọn serializer theo action và tham số"""
+        include_videos = self.request.query_params.get('include_videos', 'false').lower() == 'true'
+        
+        if include_videos:
+            return CategoryDetailSerializer
+        return CategorySerializer
     
     # Thêm filter và search
     filter_backends = [SearchFilter, OrderingFilter]
@@ -59,7 +66,38 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def videos(self, request, id=None):
         """Lấy danh sách video trong category"""
         category = self.get_object()
-        videos = category.video_set.all()
+        videos = category.video_set.select_related('category').prefetch_related('tags')
+        
+        # Filter theo status
+        status = request.query_params.get('status', None)
+        if status:
+            videos = videos.filter(status=status)
+        
+        # Filter theo tags
+        tags = request.query_params.get('tags', None)
+        if tags:
+            tag_ids = [int(x) for x in tags.split(',') if x.isdigit()]
+            videos = videos.filter(tags__id__in=tag_ids).distinct()
+        
+        # Search
+        search = request.query_params.get('search', None)
+        if search:
+            videos = videos.filter(
+                Q(title__icontains=search) | Q(description__icontains=search)
+            )
+        
+        # Date filters
+        date_from = request.query_params.get('date_from', None)
+        date_to = request.query_params.get('date_to', None)
+        if date_from:
+            videos = videos.filter(created_at__gte=date_from)
+        if date_to:
+            videos = videos.filter(created_at__lte=date_to)
+        
+        # Ordering
+        ordering = request.query_params.get('ordering', '-created_at')
+        if ordering:
+            videos = videos.order_by(ordering)
         
         # Phân trang
         page = self.paginate_queryset(videos)
