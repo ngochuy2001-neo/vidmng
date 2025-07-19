@@ -6,7 +6,6 @@ from .models import Category, Tag, Video
 class CategorySerializer(serializers.ModelSerializer):
     """Serializer cho Category"""
     video_count = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
     
     class Meta:
         model = Category
@@ -16,14 +15,6 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_video_count(self, obj):
         """Đếm số video trong category"""
         return obj.video_set.count()
-    
-    def get_image(self, obj):
-        request = self.context.get('request')
-        if obj.image and hasattr(obj.image, 'url'):
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return None
     
     def validate_name(self, value):
         """Validate tên category"""
