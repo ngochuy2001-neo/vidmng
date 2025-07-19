@@ -36,8 +36,6 @@ export function VideoGrid() {
         const response = await fetch(`http://192.168.10.83/api/categories/?slug=${categorySlug}&include_videos=true`)
         const categoryData = await response.json()
         console.log('Category with videos API response:', categoryData)
-        console.log('Response status:', response.status)
-        console.log('Response headers:', response.headers)
         
         if (categoryData && categoryData.length > 0) {
           const category = categoryData[0]
@@ -50,8 +48,26 @@ export function VideoGrid() {
           console.log('No category found or empty response')
           data = { results: [] }
         }
+      } else if (pathname.startsWith('/keyword/') && categorySlug && categorySlug !== 'keywords') {
+        // Nếu đang ở trang keyword, lấy video từ API tags với include_videos=true
+        console.log('Fetching tag with videos from /api/tags/?slug=' + categorySlug + '&include_videos=true')
+        const response = await fetch(`http://192.168.10.83/api/tags/?slug=${categorySlug}&include_videos=true`)
+        const tagData = await response.json()
+        console.log('Tag with videos API response:', tagData)
+        
+        if (tagData && tagData.length > 0) {
+          const tag = tagData[0]
+          console.log('Tag object:', tag)
+          console.log('Tag videos:', tag.videos)
+          // Sử dụng video từ tag response
+          data = { results: tag.videos || [] }
+          console.log('Final data for videos:', data)
+        } else {
+          console.log('No tag found or empty response')
+          data = { results: [] }
+        }
       } else {
-        // Nếu không phải trang category, lấy tất cả video
+        // Nếu không phải trang category hoặc keyword, lấy tất cả video
         console.log('Fetching all videos from /videos/ API')
         data = await videoAPI.getVideos({ status: 'published' })
         console.log('All videos API response:', data)

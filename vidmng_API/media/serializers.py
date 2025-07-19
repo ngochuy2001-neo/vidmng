@@ -76,6 +76,27 @@ class TagSerializer(serializers.ModelSerializer):
         return value.lower()
 
 
+class TagDetailSerializer(serializers.ModelSerializer):
+    """Serializer cho Tag với danh sách video"""
+    video_count = serializers.SerializerMethodField()
+    videos = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Tag
+        fields = ['id', 'name', 'slug', 'video_count', 'videos']
+        read_only_fields = ['id', 'video_count', 'videos']
+    
+    def get_video_count(self, obj):
+        """Đếm số video có tag này"""
+        return obj.video_set.count()
+    
+    def get_videos(self, obj):
+        """Lấy danh sách video có tag này"""
+        # Lấy tất cả video có tag này, không filter theo status
+        videos = obj.video_set.all().order_by('-created_at')
+        return VideoListSerializer(videos, many=True, context=self.context).data
+
+
 class VideoListSerializer(serializers.ModelSerializer):
     """Serializer cho danh sách video (GET list)"""
     category_name = serializers.CharField(source='category.name', read_only=True)

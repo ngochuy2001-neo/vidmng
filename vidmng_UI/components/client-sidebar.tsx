@@ -3,7 +3,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Home, Clock, FolderOpen } from "lucide-react"
+import { Home, Clock, FolderOpen, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const mainNavItems = [
@@ -29,6 +29,12 @@ const categoryItems = [
     href: "/categories",
     icon: FolderOpen,
     color: "text-blue-500",
+  },
+  {
+    title: "Keywords",
+    href: "/keywords",
+    icon: Tag,
+    color: "text-purple-500",
   },
 ]
 
