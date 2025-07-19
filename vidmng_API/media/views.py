@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import Category, Tag, Video
 from .serializers import (
-    CategorySerializer, CategoryDetailSerializer, TagSerializer, VideoListSerializer,
+    CategorySerializer, CategoryDetailSerializer, TagSerializer, TagDetailSerializer, VideoListSerializer,
     VideoDetailSerializer, VideoCreateUpdateSerializer,
     VideoStatsSerializer, VideoViewCountSerializer
 )
@@ -148,8 +148,15 @@ class TagViewSet(viewsets.ModelViewSet):
     """
     
     queryset = Tag.objects.all()
-    serializer_class = TagSerializer
     lookup_field = 'id'
+    
+    def get_serializer_class(self):
+        """Chọn serializer theo action và tham số"""
+        include_videos = self.request.query_params.get('include_videos', 'false').lower() == 'true'
+        
+        if include_videos:
+            return TagDetailSerializer
+        return TagSerializer
     
     # Thêm filter và search
     filter_backends = [SearchFilter, OrderingFilter]
