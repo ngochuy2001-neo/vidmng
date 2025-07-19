@@ -115,7 +115,8 @@ class VideoCreateUpdateSerializer(serializers.ModelSerializer):
             'category', 'tag_ids', 'status', 'is_favorite'
         ]
         extra_kwargs = {
-            'thumbnail': {'required': False, 'allow_null': True}
+            'thumbnail': {'required': False, 'allow_null': True},
+            'slug': {'required': False, 'allow_blank': True}
         }
     
     def validate_title(self, value):

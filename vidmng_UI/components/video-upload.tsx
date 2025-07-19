@@ -2,19 +2,24 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, Video, X } from "lucide-react"
+import { Upload, Video, X, Loader2 } from "lucide-react"
 import { KeywordsInput } from "@/components/keywords-input"
+import { categoryAPI, tagAPI, type Category, type Tag } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 export function VideoUpload() {
   const [dragActive, setDragActive] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -23,6 +28,35 @@ export function VideoUpload() {
     keywords: [] as string[],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const { toast } = useToast()
+
+  // Fetch categories và tags khi component mount
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [categoriesData, tagsData] = await Promise.all([
+        categoryAPI.getCategories(),
+        tagAPI.getTags()
+      ])
+      
+      setCategories(categoriesData.results || categoriesData)
+      setTags(tagsData.results || tagsData)
+    } catch (err: any) {
+      console.error('Lỗi khi tải dữ liệu:', err)
+      const errorMessage = err.response?.data?.detail || err.message || 'Không thể tải dữ liệu danh mục và tags.'
+      toast({
+        title: "Lỗi",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -81,7 +115,11 @@ export function VideoUpload() {
 
   const handleSubmit = () => {
     if (!selectedFile) {
-      alert("Vui lòng chọn file video")
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn file video",
+        variant: "destructive",
+      })
       return
     }
 
@@ -91,7 +129,10 @@ export function VideoUpload() {
 
     // Handle upload logic here
     console.log("Upload data:", { file: selectedFile, ...formData })
-    alert("Video đã được tải lên thành công!")
+    toast({
+      title: "Thành công",
+      description: "Video đã được tải lên thành công!",
+    })
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -106,6 +147,21 @@ export function VideoUpload() {
     if (errors.keywords) {
       setErrors((prev) => ({ ...prev, keywords: "" }))
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8">
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span>Đang tải dữ liệu...</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -215,7 +271,7 @@ export function VideoUpload() {
             </div>
 
             {/* Category and Privacy */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="category">
                   Danh mục <span className="text-destructive">*</span>
@@ -225,35 +281,20 @@ export function VideoUpload() {
                     <SelectValue placeholder="Chọn danh mục phù hợp" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="music">🎵 Âm nhạc</SelectItem>
-                    <SelectItem value="entertainment">🎭 Giải trí</SelectItem>
-                    <SelectItem value="sports">⚽ Thể thao</SelectItem>
-                    <SelectItem value="news">📰 Tin tức</SelectItem>
-                    <SelectItem value="education">📚 Giáo dục</SelectItem>
-                    <SelectItem value="technology">💻 Công nghệ</SelectItem>
-                    <SelectItem value="travel">✈️ Du lịch</SelectItem>
-                    <SelectItem value="food">🍳 Ẩm thực</SelectItem>
-                    <SelectItem value="fashion">👗 Thời trang</SelectItem>
-                    <SelectItem value="gaming">🎮 Game</SelectItem>
-                    <SelectItem value="lifestyle">🌟 Lối sống</SelectItem>
-                    <SelectItem value="business">💼 Kinh doanh</SelectItem>
+                    {categories.length > 0 ? (
+                      categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        Không có danh mục nào
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.category && <p className="text-xs text-destructive">{errors.category}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="privacy">Quyền riêng tư</Label>
-                <Select value={formData.privacy} onValueChange={(value) => handleInputChange("privacy", value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">🌍 Công khai</SelectItem>
-                    <SelectItem value="unlisted">🔗 Không công khai (chỉ có link)</SelectItem>
-                    <SelectItem value="private">🔒 Riêng tư</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 
@@ -265,7 +306,6 @@ export function VideoUpload() {
               <KeywordsInput
                 keywords={formData.keywords}
                 onChange={handleKeywordsChange}
-                placeholder="Nhập keyword và nhấn Enter..."
                 maxKeywords={10}
                 error={errors.keywords}
               />
