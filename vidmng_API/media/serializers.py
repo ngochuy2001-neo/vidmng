@@ -126,7 +126,10 @@ class VideoCreateUpdateSerializer(serializers.ModelSerializer):
             'title', 'slug', 'description', 'video_file', 'thumbnail', 
             'category', 'tag_ids', 'status', 'is_favorite'
         ]
-    
+        extra_kwargs = {
+            'thumbnail': {'required': False, 'allow_null': True},
+            'slug': {'required': False, 'allow_blank': True}
+        }
     def validate_title(self, value):
         """Validate tiêu đề"""
         if len(value.strip()) < 3:

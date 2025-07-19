@@ -1,6 +1,12 @@
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
+from moviepy.editor import VideoFileClip
+from django.core.files.base import ContentFile
+from io import BytesIO
+from PIL import Image
+import os
 
 
 class Category(models.Model):
@@ -87,7 +93,25 @@ class Video(models.Model):
         self.view_count = models.F('view_count') + 1
         self.save(update_fields=['view_count'])
     
+    def generate_slug(self):
+        """Tự động tạo slug từ title"""
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            
+            # Kiểm tra xem slug đã tồn tại chưa
+            while Video.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            
+            self.slug = slug
+    
     def save(self, *args, **kwargs):
+        # Tự động tạo slug nếu chưa có
+        if not self.slug:
+            self.generate_slug()
+        
         # Tự động set published_at khi chuyển sang trạng thái published
         if self.status == 'published' and not self.published_at:
             self.published_at = timezone.now()
