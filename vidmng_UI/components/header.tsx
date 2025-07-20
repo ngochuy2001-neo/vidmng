@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Home, Clock, ThumbsUp } from "lucide-react"
+import { Menu, Home, Clock, ThumbsUp, Settings } from "lucide-react"
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -38,13 +38,13 @@ export function Header() {
                     <Home className="h-5 w-5" />
                     Trang chủ
                   </Link>
-                  <Link href="/history" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent">
+                  <Link href="/categories" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent">
                     <Clock className="h-5 w-5" />
-                    Lịch sử
+                    Danh mục
                   </Link>
-                  <Link href="/liked" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent">
+                  <Link href="/keywords" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent">
                     <ThumbsUp className="h-5 w-5" />
-                    Video đã thích
+                    Tags
                   </Link>
                 </nav>
               </SheetContent>
@@ -111,6 +111,13 @@ export function Header() {
               </svg>
             </Link>
             {/* … (avatar / auth-dropdown code that was already present) */}
+            <Link
+              href="/admin"
+              className="hidden sm:flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+              title="Tải lên video"
+            >
+              <Settings className="h-5 w-5" />
+            </Link>
           </div>
         </div>
       </div>
