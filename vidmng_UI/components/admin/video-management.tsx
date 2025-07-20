@@ -129,13 +129,15 @@ export function VideoManagement() {
     const tagIds = video.tag_names && Array.isArray(video.tag_names) ? 
       tags.filter(tag => video.tag_names?.includes(tag.name)).map(tag => tag.id) : []
     
-    setEditFormData({
+    const formData = {
       title: video.title || "",
       description: video.description || "",
       category: video.category_name || "none",
       status: video.status || "draft",
       tag_ids: tagIds,
-    })
+    }
+    
+    setEditFormData(formData)
     setIsEditDialogOpen(true)
   }
 
@@ -391,7 +393,14 @@ export function VideoManagement() {
       </main>
 
       {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open)
+        if (!open) {
+          // Reset form khi đóng dialog
+          setEditFormData({ title: "", description: "", category: "", status: "draft", tag_ids: [] })
+          setEditingVideo(null)
+        }
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Chỉnh sửa Video</DialogTitle>
@@ -490,8 +499,7 @@ export function VideoManagement() {
                   variant="outline"
                   onClick={() => {
                     setIsEditDialogOpen(false)
-                    setEditFormData({ title: "", description: "", category: "", status: "draft", tag_ids: [] })
-                    setEditingVideo(null)
+                    // Không reset form ngay, chỉ đóng dialog
                   }}
                   disabled={isUpdating}
                 >

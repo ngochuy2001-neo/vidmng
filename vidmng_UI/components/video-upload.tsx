@@ -91,23 +91,15 @@ export function VideoUpload() {
 
     if (!formData.title.trim()) {
       newErrors.title = "Tiêu đề là bắt buộc"
-    } else if (formData.title.length > 100) {
-      newErrors.title = "Tiêu đề không được vượt quá 100 ký tự"
+    } else if (formData.title.length > 200) {
+      newErrors.title = "Tiêu đề không được vượt quá 200 ký tự"
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = "Mô tả là bắt buộc"
-    } else if (formData.description.length > 5000) {
+    if (formData.description.length > 5000) {
       newErrors.description = "Mô tả không được vượt quá 5000 ký tự"
     }
 
-    if (!formData.category) {
-      newErrors.category = "Vui lòng chọn danh mục"
-    }
-
-    if (formData.keywords.length === 0) {
-      newErrors.keywords = "Vui lòng thêm ít nhất 1 keyword"
-    } else if (formData.keywords.length > 10) {
+    if (formData.keywords.length > 10) {
       newErrors.keywords = "Không được vượt quá 10 keywords"
     }
 
@@ -294,7 +286,7 @@ export function VideoUpload() {
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
                 className={errors.title ? "border-destructive" : ""}
-                maxLength={100}
+                maxLength={200}
                 disabled={uploading}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -303,14 +295,14 @@ export function VideoUpload() {
                 ) : (
                   <span>Tiêu đề tốt sẽ thu hút nhiều người xem hơn</span>
                 )}
-                <span>{formData.title.length}/100</span>
+                <span>{formData.title.length}/200</span>
               </div>
             </div>
 
             {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description">
-                Mô tả <span className="text-destructive">*</span>
+                Mô tả
               </Label>
               <Textarea
                 id="description"
@@ -325,7 +317,7 @@ export function VideoUpload() {
                 {errors.description ? (
                   <span className="text-destructive">{errors.description}</span>
                 ) : (
-                  <span>Mô tả chi tiết giúp video được tìm thấy dễ dàng hơn</span>
+                  <span>Mô tả chi tiết giúp video được tìm thấy dễ dàng hơn (tùy chọn)</span>
                 )}
                 <span>{formData.description.length}/5000</span>
               </div>
@@ -335,17 +327,18 @@ export function VideoUpload() {
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="category">
-                  Danh mục <span className="text-destructive">*</span>
+                  Danh mục
                 </Label>
                 <Select 
                   value={formData.category} 
                   onValueChange={(value) => handleInputChange("category", value)}
                   disabled={uploading}
                 >
-                  <SelectTrigger className={errors.category ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Chọn danh mục phù hợp" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn danh mục phù hợp (tùy chọn)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">Không có danh mục</SelectItem>
                     {categories.length > 0 ? (
                       categories.map((category) => (
                         <SelectItem key={category.id} value={category.id.toString()}>
@@ -359,14 +352,14 @@ export function VideoUpload() {
                     )}
                   </SelectContent>
                 </Select>
-                {errors.category && <p className="text-xs text-destructive">{errors.category}</p>}
+                <p className="text-xs text-muted-foreground">Chọn danh mục giúp video được phân loại tốt hơn</p>
               </div>
             </div>
 
             {/* Keywords */}
             <div className="space-y-2">
               <Label>
-                Keywords <span className="text-destructive">*</span>
+                Keywords
               </Label>
               <KeywordsInput
                 keywords={formData.keywords}
@@ -378,7 +371,7 @@ export function VideoUpload() {
                 <p className="text-xs text-destructive">{errors.keywords}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Thêm keywords giúp video được tìm thấy dễ dàng hơn (tối đa 10 keywords)
+                  Thêm keywords giúp video được tìm thấy dễ dàng hơn (tùy chọn, tối đa 10 keywords)
                 </p>
               )}
             </div>
