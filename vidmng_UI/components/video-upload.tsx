@@ -25,7 +25,7 @@ export function VideoUpload() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    category: "",
+    category: "none",
     privacy: "public",
     keywords: [] as string[],
   })
@@ -131,7 +131,7 @@ export function VideoUpload() {
       uploadFormData.append('description', formData.description)
       uploadFormData.append('video_file', selectedFile)
       
-      if (formData.category) {
+      if (formData.category && formData.category !== 'none') {
         uploadFormData.append('category', formData.category)
       }
 
@@ -161,7 +161,7 @@ export function VideoUpload() {
       setFormData({
         title: "",
         description: "",
-        category: "",
+        category: "none",
         privacy: "public",
         keywords: [],
       })
@@ -338,7 +338,7 @@ export function VideoUpload() {
                     <SelectValue placeholder="Chọn danh mục phù hợp (tùy chọn)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Không có danh mục</SelectItem>
+                    <SelectItem value="none">Không có danh mục</SelectItem>
                     {categories.length > 0 ? (
                       categories.map((category) => (
                         <SelectItem key={category.id} value={category.id.toString()}>
@@ -346,7 +346,7 @@ export function VideoUpload() {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="none" disabled>
                         Không có danh mục nào
                       </SelectItem>
                     )}
