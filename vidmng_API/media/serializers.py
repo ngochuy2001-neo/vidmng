@@ -273,8 +273,3 @@ class VideoViewCountSerializer(serializers.ModelSerializer):
         model = Video
         fields = ['view_count']
         read_only_fields = ['view_count']
-    
-    def update(self, instance, validated_data):
-        """Tăng lượt xem"""
-        instance.increment_view_count()
-        return instance
