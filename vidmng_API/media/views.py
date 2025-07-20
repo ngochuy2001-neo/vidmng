@@ -272,36 +272,10 @@ class VideoViewSet(viewsets.ModelViewSet):
         return queryset
     
     def retrieve(self, request, *args, **kwargs):
-        """Override retrieve để tự động tăng view count"""
+        """Chỉ trả về chi tiết video, không tăng view_count"""
         instance = self.get_object()
-        
-        should_increment = request.query_params.get('increment_view', 'true').lower() == 'true'
-        if should_increment:
-            instance.increment_view_count()
-        
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-    
-    @action(detail=True, methods=['post'])
-    def increment_view(self, request, id=None):
-        """Tăng lượt xem video"""
-        video = self.get_object()
-        video.increment_view_count()
-        
-        serializer = VideoViewCountSerializer(video)
-        return Response(serializer.data)
-    
-    @action(detail=True, methods=['patch'])
-    def toggle_favorite(self, request, id=None):
-        """Bật/tắt yêu thích"""
-        video = self.get_object()
-        video.is_favorite = not video.is_favorite
-        video.save()
-        
-        return Response({
-            'is_favorite': video.is_favorite,
-            'message': 'Đã thêm vào yêu thích' if video.is_favorite else 'Đã bỏ khỏi yêu thích'
-        })
     
     @action(detail=False, methods=['get'])
     def favorites(self, request):
