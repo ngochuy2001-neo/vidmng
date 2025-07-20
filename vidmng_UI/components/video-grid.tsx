@@ -70,7 +70,7 @@ export function VideoGrid() {
       } else {
         // Nếu không phải trang category hoặc keyword, lấy tất cả video
         console.log('Fetching all videos from /videos/ API')
-        data = await videoAPI.getVideos({ status: 'published' })
+        data = await videoAPI.getVideos()
         console.log('All videos API response:', data)
       }
       
@@ -118,7 +118,7 @@ export function VideoGrid() {
       {/* Debug info */}
 
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {videos.map((video) => (
           <VideoCard
             key={video.id}
