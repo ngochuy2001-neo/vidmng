@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThumbsUp, ThumbsDown, Share, Download, Flag, Loader2 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { ThumbsUp, ThumbsDown, Share, Download, Flag, Loader2, Edit3, Save, X } from "lucide-react"
 import { videoAPI, type Video } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 interface VideoInfoProps {
   videoId: string
@@ -16,6 +18,13 @@ export function VideoInfo({ videoId }: VideoInfoProps) {
   const [video, setVideo] = useState<Video | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // States cho chỉnh sửa mô tả
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [editDescription, setEditDescription] = useState("")
+  const [savingDescription, setSavingDescription] = useState(false)
+  
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchVideo()
@@ -28,10 +37,48 @@ export function VideoInfo({ videoId }: VideoInfoProps) {
       setError(null)
       const data = await videoAPI.getVideo(Number(videoId))
       setVideo(data)
+      setEditDescription(data.description || "")
     } catch (err: any) {
       setError("Không thể tải thông tin video. Vui lòng thử lại sau.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleEditDescription = () => {
+    setIsEditingDescription(true)
+    setEditDescription(video?.description || "")
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingDescription(false)
+    setEditDescription(video?.description || "")
+  }
+
+  const handleSaveDescription = async () => {
+    if (!video) return
+    
+    try {
+      setSavingDescription(true)
+      const updatedVideo = await videoAPI.updateVideo(video.id, {
+        description: editDescription
+      })
+      
+      setVideo(prev => prev ? { ...prev, description: editDescription } : null)
+      setIsEditingDescription(false)
+      
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật mô tả video",
+      })
+    } catch (err: any) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật mô tả video. Vui lòng thử lại.",
+        variant: "destructive"
+      })
+    } finally {
+      setSavingDescription(false)
     }
   }
 
@@ -132,8 +179,63 @@ export function VideoInfo({ videoId }: VideoInfoProps) {
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4">
-        <h3 className="font-medium mb-2">Mô tả</h3>
-        <p className="text-sm whitespace-pre-line text-muted-foreground">{description}</p>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium">Mô tả</h3>
+          {!isEditingDescription && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEditDescription}
+              className="h-8 w-8 p-0"
+            >
+              <Edit3 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        
+        {isEditingDescription ? (
+          <div className="space-y-3">
+            <Textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Nhập mô tả video..."
+              className="min-h-[100px] resize-none"
+              disabled={savingDescription}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={handleSaveDescription}
+                disabled={savingDescription}
+              >
+                {savingDescription ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Lưu
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEdit}
+                disabled={savingDescription}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Hủy
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm whitespace-pre-line text-muted-foreground">
+            {description}
+          </p>
+        )}
       </div>
     </div>
   )
