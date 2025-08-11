@@ -141,3 +141,20 @@ class Video(models.Model):
 
         except Exception as e:
             print(f"Lỗi tạo thumbnail: {e}")
+
+
+class Comment(models.Model):
+    """Model cho comment đơn giản của video"""
+    
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='comments', verbose_name="Video")
+    content = models.TextField(verbose_name="Nội dung comment")
+    author_name = models.CharField(max_length=100, verbose_name="Tên người comment")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    
+    class Meta:
+        verbose_name = "Comment"
+        verbose_name_plural = "Comments"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Comment của {self.author_name} trên {self.video.title}"
