@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from media.views import CategoryViewSet, TagViewSet, VideoViewSet
+from media.views import CategoryViewSet, TagViewSet, VideoViewSet, CommentViewSet
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -15,6 +15,7 @@ router = DefaultRouter()
 router.register(r'categories', CategoryViewSet)
 router.register(r'tags', TagViewSet)
 router.register(r'videos', VideoViewSet)
+router.register(r'comments', CommentViewSet)
 
 # Swagger schema config
 schema_view = get_schema_view(
