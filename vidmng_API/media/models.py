@@ -127,14 +127,23 @@ class Video(models.Model):
     def generate_thumbnail(self):
         try:
             clip = VideoFileClip(self.video_file.path)
-            frame = clip.get_frame(1.0)  # Lấy frame ở giây thứ 1
+            
+            # Lấy thời gian giữa video
+            duration = clip.duration
+            middle_time = duration / 2
+            
+            # Lấy frame ở giữa video
+            frame = clip.get_frame(middle_time)
             image = Image.fromarray(frame)
 
             thumb_io = BytesIO()
-            image.save(thumb_io, format='JPEG')
+            image.save(thumb_io, format='JPEG', quality=85)
 
             thumb_name = os.path.splitext(os.path.basename(self.video_file.name))[0] + '_thumb.jpg'
             self.thumbnail.save(thumb_name, ContentFile(thumb_io.getvalue()), save=False)
+
+            # Đóng clip để giải phóng bộ nhớ
+            clip.close()
 
             # Lưu lại model lần nữa để update thumbnail
             super().save(update_fields=['thumbnail'])

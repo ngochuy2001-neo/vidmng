@@ -42,6 +42,7 @@ export interface Tag {
   name: string
   slug: string
   video_count: number
+  videos?: Video[]
 }
 
 export interface VideoUpdateData {
@@ -179,9 +180,27 @@ export const categoryAPI = {
 // Tag API
 export const tagAPI = {
   // Lấy danh sách tags
-  getTags: async () => {
-    const response = await api.get('/tags/')
+  getTags: async (includeVideos: boolean = false) => {
+    const response = await api.get('/tags/', {
+      params: { include_videos: includeVideos }
+    })
     return response.data
+  },
+
+  // Lấy tag theo slug
+  getTagBySlug: async (slug: string, includeVideos: boolean = false) => {
+    const response = await api.get('/tags/', {
+      params: { 
+        slug,
+        include_videos: includeVideos
+      }
+    })
+    // API trả về array, lấy item đầu tiên
+    const data = response.data
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0]
+    }
+    return null
   },
 
   // Lấy tags phổ biến

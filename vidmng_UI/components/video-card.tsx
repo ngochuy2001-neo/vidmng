@@ -27,7 +27,7 @@ export function VideoCard({ video }: VideoCardProps) {
               alt={video.title}
               width={300}
               height={200}
-              className="w-full h-48 object-cover rounded-t-lg"
+              className="w-full h-48 object-contain rounded-t-lg"
             />
             <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
               {video.duration}

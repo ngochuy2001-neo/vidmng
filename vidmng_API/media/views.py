@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import Category, Tag, Video, Comment
 from .serializers import (
-    CategorySerializer, CategoryDetailSerializer, TagSerializer, VideoListSerializer,
+    CategorySerializer, CategoryDetailSerializer, TagSerializer, TagDetailSerializer, VideoListSerializer,
     VideoDetailSerializer, VideoCreateUpdateSerializer,
     VideoStatsSerializer, VideoViewCountSerializer,
     CommentSerializer, CommentCreateSerializer, CommentUpdateSerializer
@@ -149,8 +149,15 @@ class TagViewSet(viewsets.ModelViewSet):
     """
     
     queryset = Tag.objects.all()
-    serializer_class = TagSerializer
     lookup_field = 'id'
+    
+    def get_serializer_class(self):
+        """Chọn serializer theo action và tham số"""
+        include_videos = self.request.query_params.get('include_videos', 'false').lower() == 'true'
+        
+        if include_videos:
+            return TagDetailSerializer
+        return TagSerializer
     
     # Thêm filter và search
     filter_backends = [SearchFilter, OrderingFilter]
@@ -161,6 +168,11 @@ class TagViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Customize queryset"""
         queryset = Tag.objects.all()
+        
+        # Filter theo slug
+        slug = self.request.query_params.get('slug', None)
+        if slug:
+            queryset = queryset.filter(slug=slug)
         
         # Filter theo tham số query
         has_videos = self.request.query_params.get('has_videos', None)
@@ -261,36 +273,10 @@ class VideoViewSet(viewsets.ModelViewSet):
         return queryset
     
     def retrieve(self, request, *args, **kwargs):
-        """Override retrieve để tự động tăng view count"""
+        """Chỉ trả về chi tiết video, không tăng view_count"""
         instance = self.get_object()
-        
-        should_increment = request.query_params.get('increment_view', 'true').lower() == 'true'
-        if should_increment:
-            instance.increment_view_count()
-        
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-    
-    @action(detail=True, methods=['post'])
-    def increment_view(self, request, id=None):
-        """Tăng lượt xem video"""
-        video = self.get_object()
-        video.increment_view_count()
-        
-        serializer = VideoViewCountSerializer(video)
-        return Response(serializer.data)
-    
-    @action(detail=True, methods=['patch'])
-    def toggle_favorite(self, request, id=None):
-        """Bật/tắt yêu thích"""
-        video = self.get_object()
-        video.is_favorite = not video.is_favorite
-        video.save()
-        
-        return Response({
-            'is_favorite': video.is_favorite,
-            'message': 'Đã thêm vào yêu thích' if video.is_favorite else 'Đã bỏ khỏi yêu thích'
-        })
     
     @action(detail=False, methods=['get'])
     def favorites(self, request):
