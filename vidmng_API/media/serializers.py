@@ -273,3 +273,51 @@ class VideoViewCountSerializer(serializers.ModelSerializer):
         model = Video
         fields = ['view_count']
         read_only_fields = ['view_count']
+    
+    def update(self, instance, validated_data):
+        """Tăng lượt xem"""
+        instance.increment_view_count()
+        return instance
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Serializer cho Comment"""
+    
+    class Meta:
+        model = Comment
+        fields = ['id', 'content', 'author_name', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class CommentCreateSerializer(serializers.ModelSerializer):
+    """Serializer cho tạo comment mới"""
+    
+    class Meta:
+        model = Comment
+        fields = ['video', 'content', 'author_name']
+    
+    def validate_content(self, value):
+        """Validate nội dung comment"""
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError("Nội dung comment phải có ít nhất 3 ký tự")
+        return value.strip()
+    
+    def validate_author_name(self, value):
+        """Validate tên tác giả"""
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Tên phải có ít nhất 2 ký tự")
+        return value.strip()
+
+
+class CommentUpdateSerializer(serializers.ModelSerializer):
+    """Serializer cho cập nhật comment"""
+    
+    class Meta:
+        model = Comment
+        fields = ['content']
+    
+    def validate_content(self, value):
+        """Validate nội dung comment"""
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError("Nội dung comment phải có ít nhất 3 ký tự")
+        return value.strip()

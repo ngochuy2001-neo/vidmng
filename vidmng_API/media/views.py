@@ -6,11 +6,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 
-from .models import Category, Tag, Video
+from .models import Category, Tag, Video, Comment
 from .serializers import (
     CategorySerializer, CategoryDetailSerializer, TagSerializer, TagDetailSerializer, VideoListSerializer,
     VideoDetailSerializer, VideoCreateUpdateSerializer,
-    VideoStatsSerializer, VideoViewCountSerializer
+    VideoStatsSerializer, VideoViewCountSerializer,
+    CommentSerializer, CommentCreateSerializer, CommentUpdateSerializer
 )
 
 
@@ -376,3 +377,100 @@ class VideoViewSet(viewsets.ModelViewSet):
             instance.thumbnail.delete(save=False)
         
         return super().destroy(request, *args, **kwargs)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet cho Comment - API đơn giản cho comment
+    
+    list: GET /api/comments/ - Danh sách comments
+    create: POST /api/comments/ - Tạo comment mới
+    retrieve: GET /api/comments/{id}/ - Chi tiết comment
+    update: PUT /api/comments/{id}/ - Cập nhật comment
+    partial_update: PATCH /api/comments/{id}/ - Cập nhật comment (một phần)
+    destroy: DELETE /api/comments/{id}/ - Xóa comment
+    """
+    
+    queryset = Comment.objects.all()
+    lookup_field = 'id'
+    
+    def get_serializer_class(self):
+        """Chọn serializer theo action"""
+        if self.action == 'create':
+            return CommentCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return CommentUpdateSerializer
+        else:
+            return CommentSerializer
+    
+    # Thêm filter và search
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['content', 'author_name']
+    ordering_fields = ['created_at', 'author_name']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Customize queryset với filters"""
+        queryset = Comment.objects.select_related('video')
+        
+        # Filter theo video
+        video_id = self.request.query_params.get('video', None)
+        if video_id:
+            queryset = queryset.filter(video_id=video_id)
+        
+        # Filter theo tác giả
+        author = self.request.query_params.get('author', None)
+        if author:
+            queryset = queryset.filter(author_name__icontains=author)
+        
+        # Search
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(content__icontains=search) | Q(author_name__icontains=search)
+            )
+        
+        return queryset
+    
+    @action(detail=False, methods=['get'])
+    def by_video(self, request):
+        """Lấy danh sách comment theo video"""
+        video_id = request.query_params.get('video_id', None)
+        if not video_id:
+            return Response(
+                {'error': 'Cần cung cấp video_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        comments = self.get_queryset().filter(video_id=video_id)
+        
+        # Phân trang
+        page = self.paginate_queryset(comments)
+        if page is not None:
+            serializer = CommentSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        """Lấy danh sách comment mới nhất"""
+        comments = self.get_queryset()[:20]
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Thống kê comment"""
+        queryset = self.get_queryset()
+        
+        stats = {
+            'total_comments': queryset.count(),
+            'total_videos_with_comments': queryset.values('video').distinct().count(),
+            'top_authors': queryset.values('author_name').annotate(
+                count=Count('id')
+            ).order_by('-count')[:5],
+        }
+        
+        return Response(stats)
