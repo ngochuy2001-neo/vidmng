@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db.models import F
-from .models import Category, Tag, Video
+from .models import Category, Tag, Video, Comment
 
 
 class CategorySerializer(serializers.ModelSerializer):
